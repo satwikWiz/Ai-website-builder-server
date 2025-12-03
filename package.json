@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
-    "postinstall": "npx puppeteer browsers install chrome"
+    "postinstall": "prisma generate && npx puppeteer browsers install chrome",
+    "build": "PUPPETEER_SKIP_DOWNLOAD=true npm run build"
   },
   "keywords": [],
   "author": "",
