@@ -1,4 +1,5 @@
 import puppeteer from 'puppeteer';
+import { ensureChromeInstalled } from '../utils/chrome-installer.js';
 
 export async function scrapeWebsite(req, res) {
   let browser;
@@ -7,6 +8,15 @@ export async function scrapeWebsite(req, res) {
 
     if (!url) {
       return res.status(400).json({ error: 'URL is required' });
+    }
+
+    // Ensure Chrome is installed before scraping
+    const chromeReady = await ensureChromeInstalled();
+    if (!chromeReady) {
+      return res.status(500).json({
+        error: 'Chrome browser not available',
+        message: 'Chrome browser is not installed. Please run: npx puppeteer browsers install chrome'
+      });
     }
 
     console.log(`Scraping website: ${url}`);
