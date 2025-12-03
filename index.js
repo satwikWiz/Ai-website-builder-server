@@ -7,7 +7,13 @@ import { generateVariants, getVariants, getVariant, saveVariant } from './routes
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+// Allow all origins
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false
+}));
 app.use(express.json({ limit: '50mb' }));
 
 // Routes
