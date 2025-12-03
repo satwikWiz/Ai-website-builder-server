@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 
 const prisma = new PrismaClient();
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyAjNo1Dq4Q_zIQtT5Sn3wyDsReGENcZyG8';
+const GEMINI_API_KEY ='AIzaSyAjNo1Dq4Q_zIQtT5Sn3wyDsReGENcZyG8';
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // Extract CSS properties from scraped HTML and styles
@@ -17,6 +17,8 @@ function extractPropertiesFromScrapedHtml(html, styles) {
         color: '#333',
     };
 
+
+    console.log('Extracting properties from scraped HTML:', GEMINI_API_KEY);
     // Extract title from HTML
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     if (titleMatch) {
