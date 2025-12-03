@@ -43,9 +43,10 @@ export async function scrapeWebsite(req, res) {
     // For Vercel, use @sparticuz/chromium
     if (isVercel) {
       console.log('Running on Vercel, using @sparticuz/chromium');
-      chromium.setGraphicsMode(false);
       launchOptions.executablePath = await chromium.executablePath();
       launchOptions.args = [...chromium.args, ...launchOptions.args];
+      launchOptions.defaultViewport = chromium.defaultViewport;
+      launchOptions.headless = chromium.headless;
     } else {
       // For local/other environments, use regular Puppeteer Chrome
       let executablePath;
