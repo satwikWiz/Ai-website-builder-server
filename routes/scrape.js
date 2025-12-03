@@ -26,17 +26,34 @@ export async function scrapeWebsite(req, res) {
     };
 
     // Try to get the executable path for the installed Chrome
+    let executablePath;
     try {
-      const executablePath = puppeteer.executablePath();
-      if (executablePath) {
+      executablePath = puppeteer.executablePath();
+      // Check if the file actually exists
+      const fs = await import('fs');
+      if (executablePath && fs.existsSync(executablePath)) {
         launchOptions.executablePath = executablePath;
         console.log('Using Chrome at:', executablePath);
+      } else {
+        console.log('Chrome not found at expected path, trying without explicit path');
       }
     } catch (e) {
       console.log('Could not get executable path, using default');
     }
 
-    browser = await puppeteer.launch(launchOptions);
+    // Try to launch browser
+    try {
+      browser = await puppeteer.launch(launchOptions);
+    } catch (launchError) {
+      // If launch fails with executablePath, try without it
+      if (launchOptions.executablePath) {
+        console.log('Launch failed with executablePath, trying without it...');
+        delete launchOptions.executablePath;
+        browser = await puppeteer.launch(launchOptions);
+      } else {
+        throw launchError;
+      }
+    }
 
     const page = await browser.newPage();
     
@@ -96,8 +113,8 @@ export async function scrapeWebsite(req, res) {
 
     // Provide helpful error message
     let errorMessage = error.message;
-    if (errorMessage.includes('Could not find Chrome')) {
-      errorMessage = 'Chrome browser not found. Please run: npx puppeteer browsers install chrome';
+    if (errorMessage.includes('Could not find Chrome') || errorMessage.includes('Browser was not found')) {
+      errorMessage = 'Chrome browser not found. Please run: npx puppeteer browsers install chrome. If deploying, ensure Chrome is installed in your deployment environment.';
     }
 
     res.status(500).json({ 
