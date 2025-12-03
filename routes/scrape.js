@@ -1,6 +1,7 @@
 import puppeteer from 'puppeteer';
 
 export async function scrapeWebsite(req, res) {
+  let browser;
   try {
     const { url } = req.body;
 
@@ -10,10 +11,34 @@ export async function scrapeWebsite(req, res) {
 
     console.log(`Scraping website: ${url}`);
 
-    const browser = await puppeteer.launch({
+    // Launch browser with better configuration for different environments
+    const launchOptions = {
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu',
+      ],
+    };
+
+    // Try to use the installed Chrome browser
+    try {
+      browser = await puppeteer.launch(launchOptions);
+    } catch (error) {
+      // If launch fails, try with executablePath
+      console.log('Attempting to launch with executable path...');
+      const { executablePath } = await import('puppeteer');
+      if (executablePath) {
+        launchOptions.executablePath = executablePath();
+        browser = await puppeteer.launch(launchOptions);
+      } else {
+        throw error;
+      }
+    }
 
     const page = await browser.newPage();
     
@@ -61,9 +86,25 @@ export async function scrapeWebsite(req, res) {
     });
   } catch (error) {
     console.error('Scraping error:', error);
+    
+    // Clean up browser if it was created
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeError) {
+        console.error('Error closing browser:', closeError);
+      }
+    }
+
+    // Provide helpful error message
+    let errorMessage = error.message;
+    if (errorMessage.includes('Could not find Chrome')) {
+      errorMessage = 'Chrome browser not found. Please run: npx puppeteer browsers install chrome';
+    }
+
     res.status(500).json({ 
       error: 'Failed to scrape website',
-      message: error.message 
+      message: errorMessage 
     });
   }
 }
