@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
-    "postinstall": "prisma generate && npx puppeteer browsers install chrome",
-    "build": "PUPPETEER_SKIP_DOWNLOAD=true npm run build"
+    "postinstall": "prisma generate && (npx puppeteer browsers install chrome || true)"
+    
   },
   "keywords": [],
   "author": "",
@@ -16,11 +16,13 @@
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
     "@prisma/client": "^6.2.0",
+    "@sparticuz/chromium": "^131.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^5.1.0",
     "prisma": "^6.2.0",
     "puppeteer": "^24.32.0",
+    "puppeteer-core": "^24.32.0",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

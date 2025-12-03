@@ -1,16 +1,26 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import fs from 'fs';
 
 const execAsync = promisify(exec);
+
+// Check if running on Vercel
+const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV;
 
 /**
  * Check if Chrome is installed and install it if missing
  */
 export async function ensureChromeInstalled() {
   try {
-    // Check if Chrome executable exists
+    // For Vercel, @sparticuz/chromium is used, no need to check
+    if (isVercel) {
+      console.log('✓ Using @sparticuz/chromium for Vercel');
+      return true;
+    }
+
+    // For local/other environments, check Puppeteer Chrome
     const executablePath = puppeteer.executablePath();
     
     if (executablePath && fs.existsSync(executablePath)) {

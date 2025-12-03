@@ -1,5 +1,8 @@
-import puppeteer from 'puppeteer';
+import chromium from '@sparticuz/chromium';
 import { ensureChromeInstalled } from '../utils/chrome-installer.js';
+
+// Check if running on Vercel
+const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV;
 
 export async function scrapeWebsite(req, res) {
   let browser;
@@ -32,34 +35,48 @@ export async function scrapeWebsite(req, res) {
         '--no-first-run',
         '--no-zygote',
         '--disable-gpu',
+        '--single-process',
+        '--disable-software-rasterizer',
       ],
     };
 
-    // Try to get the executable path for the installed Chrome
-    let executablePath;
-    try {
-      executablePath = puppeteer.executablePath();
-      // Check if the file actually exists
-      const fs = await import('fs');
-      if (executablePath && fs.existsSync(executablePath)) {
-        launchOptions.executablePath = executablePath;
-        console.log('Using Chrome at:', executablePath);
-      } else {
-        console.log('Chrome not found at expected path, trying without explicit path');
+    // For Vercel, use @sparticuz/chromium
+    if (isVercel) {
+      console.log('Running on Vercel, using @sparticuz/chromium');
+      chromium.setGraphicsMode(false);
+      launchOptions.executablePath = await chromium.executablePath();
+      launchOptions.args = [...chromium.args, ...launchOptions.args];
+    } else {
+      // For local/other environments, use regular Puppeteer Chrome
+      let executablePath;
+      try {
+        // puppeteer (not puppeteer-core) has executablePath method
+        const puppeteerLocal = await import('puppeteer');
+        executablePath = puppeteerLocal.default.executablePath();
+        // Check if the file actually exists
+        const fs = await import('fs');
+        if (executablePath && fs.existsSync(executablePath)) {
+          launchOptions.executablePath = executablePath;
+          console.log('Using Chrome at:', executablePath);
+        } else {
+          console.log('Chrome not found at expected path, trying without explicit path');
+        }
+      } catch (e) {
+        console.log('Could not get executable path, using default');
       }
-    } catch (e) {
-      console.log('Could not get executable path, using default');
     }
 
     // Try to launch browser
     try {
-      browser = await puppeteer.launch(launchOptions);
+      const puppeteerInstance = isVercel ? (await import('puppeteer-core')).default : (await import('puppeteer')).default;
+      browser = await puppeteerInstance.launch(launchOptions);
     } catch (launchError) {
       // If launch fails with executablePath, try without it
       if (launchOptions.executablePath) {
         console.log('Launch failed with executablePath, trying without it...');
         delete launchOptions.executablePath;
-        browser = await puppeteer.launch(launchOptions);
+        const puppeteerInstance = isVercel ? (await import('puppeteer-core')).default : (await import('puppeteer')).default;
+        browser = await puppeteerInstance.launch(launchOptions);
       } else {
         throw launchError;
       }
