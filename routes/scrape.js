@@ -1,4 +1,3 @@
-import chromium from '@sparticuz/chromium';
 import { ensureChromeInstalled } from '../utils/chrome-installer.js';
 
 // Check if running on Vercel
@@ -25,58 +24,68 @@ export async function scrapeWebsite(req, res) {
     console.log(`Scraping website: ${url}`);
 
     // Launch browser with better configuration for different environments
-    const launchOptions = {
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu',
-        '--single-process',
-        '--disable-software-rasterizer',
-      ],
-    };
+    let launchOptions;
+    let puppeteerInstance;
 
-    // For Vercel, use @sparticuz/chromium
+    // For Vercel, use @sparticuz/chromium with puppeteer-core
     if (isVercel) {
       console.log('Running on Vercel, using @sparticuz/chromium');
-      launchOptions.executablePath = await chromium.executablePath();
-      launchOptions.args = [...chromium.args, ...launchOptions.args];
-      launchOptions.defaultViewport = chromium.defaultViewport;
-      launchOptions.headless = chromium.headless;
+      puppeteerInstance = (await import('puppeteer-core')).default;
+      
+      // Dynamically import chromium only when needed (on Vercel)
+      const chromium = await import('@sparticuz/chromium');
+      const executablePath = await chromium.default.executablePath();
+      if (!executablePath) {
+        throw new Error('Failed to get Chromium executable path from @sparticuz/chromium');
+      }
+
+      launchOptions = {
+        args: [...chromium.default.args, '--no-sandbox', '--disable-setuid-sandbox'],
+        defaultViewport: chromium.default.defaultViewport,
+        executablePath: executablePath,
+        headless: chromium.default.headless,
+      };
     } else {
       // For local/other environments, use regular Puppeteer Chrome
-      let executablePath;
+      puppeteerInstance = (await import('puppeteer')).default;
+      
+      launchOptions = {
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--disable-gpu',
+        ],
+      };
+
+      // Try to get the executable path for local Puppeteer
       try {
-        // puppeteer (not puppeteer-core) has executablePath method
-        const puppeteerLocal = await import('puppeteer');
-        executablePath = puppeteerLocal.default.executablePath();
+        const executablePath = puppeteerInstance.executablePath();
         // Check if the file actually exists
         const fs = await import('fs');
         if (executablePath && fs.existsSync(executablePath)) {
           launchOptions.executablePath = executablePath;
           console.log('Using Chrome at:', executablePath);
         } else {
-          console.log('Chrome not found at expected path, trying without explicit path');
+          console.log('Chrome not found at expected path, Puppeteer will use default');
         }
       } catch (e) {
-        console.log('Could not get executable path, using default');
+        console.log('Could not get executable path, Puppeteer will use default');
       }
     }
 
     // Try to launch browser
     try {
-      const puppeteerInstance = isVercel ? (await import('puppeteer-core')).default : (await import('puppeteer')).default;
       browser = await puppeteerInstance.launch(launchOptions);
     } catch (launchError) {
-      // If launch fails with executablePath, try without it
-      if (launchOptions.executablePath) {
+      // If launch fails and we're not on Vercel, try without explicit executablePath
+      if (!isVercel && launchOptions.executablePath) {
         console.log('Launch failed with executablePath, trying without it...');
         delete launchOptions.executablePath;
-        const puppeteerInstance = isVercel ? (await import('puppeteer-core')).default : (await import('puppeteer')).default;
         browser = await puppeteerInstance.launch(launchOptions);
       } else {
         throw launchError;

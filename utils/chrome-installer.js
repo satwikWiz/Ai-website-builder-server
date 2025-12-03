@@ -1,7 +1,5 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
 import fs from 'fs';
 
 const execAsync = promisify(exec);
@@ -21,6 +19,7 @@ export async function ensureChromeInstalled() {
     }
 
     // For local/other environments, check Puppeteer Chrome
+    const puppeteer = (await import('puppeteer')).default;
     const executablePath = puppeteer.executablePath();
     
     if (executablePath && fs.existsSync(executablePath)) {
@@ -38,7 +37,7 @@ export async function ensureChromeInstalled() {
       });
       
       // Verify installation
-      const newPath = puppeteer.executablePath();
+      const newPath = (await import('puppeteer')).default.executablePath();
       if (newPath && fs.existsSync(newPath)) {
         console.log('✓ Chrome installed successfully at:', newPath);
         return true;
