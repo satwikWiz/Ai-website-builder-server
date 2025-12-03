@@ -34,16 +34,37 @@ export async function scrapeWebsite(req, res) {
       
       // Dynamically import chromium only when needed (on Vercel)
       const chromium = await import('@sparticuz/chromium');
-      const executablePath = await chromium.default.executablePath();
+      const chromiumModule = chromium.default;
+      
+      // Set font configuration for serverless (if available)
+      if (typeof chromiumModule.setFonts === 'function') {
+        chromiumModule.setFonts();
+      }
+      
+      const executablePath = await chromiumModule.executablePath();
       if (!executablePath) {
         throw new Error('Failed to get Chromium executable path from @sparticuz/chromium');
       }
 
+      // Use chromium's args which include necessary library paths
+      const chromiumArgs = chromiumModule.args || [];
+      
       launchOptions = {
-        args: [...chromium.default.args, '--no-sandbox', '--disable-setuid-sandbox'],
-        defaultViewport: chromium.default.defaultViewport,
+        args: [
+          ...chromiumArgs,
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+          '--disable-gpu',
+          '--disable-software-rasterizer',
+        ],
+        defaultViewport: chromiumModule.defaultViewport || { width: 1280, height: 720 },
         executablePath: executablePath,
-        headless: chromium.default.headless,
+        headless: chromiumModule.headless !== false,
       };
     } else {
       // For local/other environments, use regular Puppeteer Chrome
