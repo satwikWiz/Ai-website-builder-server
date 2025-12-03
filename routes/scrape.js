@@ -25,20 +25,18 @@ export async function scrapeWebsite(req, res) {
       ],
     };
 
-    // Try to use the installed Chrome browser
+    // Try to get the executable path for the installed Chrome
     try {
-      browser = await puppeteer.launch(launchOptions);
-    } catch (error) {
-      // If launch fails, try with executablePath
-      console.log('Attempting to launch with executable path...');
-      const { executablePath } = await import('puppeteer');
+      const executablePath = puppeteer.executablePath();
       if (executablePath) {
-        launchOptions.executablePath = executablePath();
-        browser = await puppeteer.launch(launchOptions);
-      } else {
-        throw error;
+        launchOptions.executablePath = executablePath;
+        console.log('Using Chrome at:', executablePath);
       }
+    } catch (e) {
+      console.log('Could not get executable path, using default');
     }
+
+    browser = await puppeteer.launch(launchOptions);
 
     const page = await browser.newPage();
     
